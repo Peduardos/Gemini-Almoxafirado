@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Almoxarifado</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- NOTIFICAÇÃO TOAST GLOBAL -->
+    <div id="global-toast" class="toast hidden"></div>
+
+    <!-- TELA DE LOGIN -->
+    <div id="login-screen" class="screen">
+        <div class="login-card">
+            <h2>Sistema de Almoxarifado</h2>
+            <p class="subtitle">Acesse com suas credenciais</p>
+
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username">Usuário</label>
+                    <input type="text" id="username" name="username" placeholder="Digite seu usuário" required autocomplete="off">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Senha</label>
+                    <input type="password" id="password" name="password" placeholder="Digite sua senha" required>
+                </div>
+
+                <div id="login-error" class="error-message hidden"></div>
+
+                <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- TELA PRINCIPAL (APLICAÇÃO) -->
+    <div id="app-screen" class="screen hidden">
+        <header class="app-header">
+            <div class="header-left">
+                <h1>Sistema de Almoxarifado</h1>
+            </div>
+            <div class="header-right">
+                <div class="user-info">
+                    <span id="user-display-name">Nome do Usuário</span>
+                    <span id="user-role-badge" class="badge">PERFIL</span>
+                </div>
+                <button id="logout-btn" class="btn btn-secondary">Sair</button>
+            </div>
+        </header>
+
+        <!-- MENU DE NAVEGAÇÃO PRINCIPAL -->
+        <nav class="app-nav">
+            <button class="nav-btn active" data-target="section-dashboard">Dashboard</button>
+            <button class="nav-btn" data-target="section-products">Consulta / Cadastro de Produtos</button>
+            <button class="nav-btn" data-target="section-stock">Estoque (Entradas / Saídas)</button>
+            <button class="nav-btn" data-target="section-history">Histórico de Movimentações</button>
+        </nav>
+
+        <main class="app-content">
+
+            <!-- SEÇÃO 0: DASHBOARD -->
+            <section id="section-dashboard" class="tab-content">
+                <div class="section-header">
+                    <h2>Visão Geral do Almoxarifado</h2>
+                </div>
+
+                <!-- CARDS DE ESTATÍSTICAS -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-title">Produtos Cadastrados</div>
+                        <div class="stat-value" id="stat-total-products">0</div>
+                        <div class="stat-desc">Variedade de itens</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">Itens em Estoque</div>
+                        <div class="stat-value" id="stat-total-items">0</div>
+                        <div class="stat-desc">Soma total das quantidades</div>
+                    </div>
+                    <div class="stat-card stat-alert">
+                        <div class="stat-title">Estoque Baixo</div>
+                        <div class="stat-value" id="stat-low-stock">0</div>
+                        <div class="stat-desc">Abaixo ou igual ao mínimo</div>
+                    </div>
+                    <div class="stat-card stat-danger">
+                        <div class="stat-title">Sem Estoque</div>
+                        <div class="stat-value" id="stat-out-of-stock">0</div>
+                        <div class="stat-desc">Quantidade igual a zero</div>
+                    </div>
+                </div>
+
+                <!-- ALERTAS DE REPOSIÇÃO DE ESTOQUE -->
+                <div class="card margin-top alert-banner-box">
+                    <h3>Alertas de Reposição de Estoque</h3>
+                    <div id="dashboard-alerts-container" class="margin-top-sm">
+                        <!-- Preenchido dinamicamente via JS -->
+                    </div>
+                </div>
+
+                <!-- ATALHOS DE ACESSO RÁPIDO -->
+                <div class="card margin-top">
+                    <h3>Acesso Rápido</h3>
+                    <div class="quick-access-buttons">
+                        <button class="btn btn-secondary nav-shortcut" data-target="section-products">Consultar Produtos</button>
+                        <button class="btn btn-secondary nav-shortcut" data-target="section-stock">Consultar Estoque</button>
+                        <button class="btn btn-secondary nav-shortcut" data-target="section-history">Ver Movimentações</button>
+                        <button class="btn btn-primary nav-shortcut admin-only" id="btn-shortcut-add-product">+ Cadastrar Produto</button>
+                        <button class="btn btn-success nav-shortcut admin-only" id="btn-shortcut-entry">+ Registrar Entrada</button>
+                        <button class="btn btn-danger nav-shortcut admin-only" id="btn-shortcut-exit">- Registrar Saída</button>
+                    </div>
+                </div>
+
+                <!-- MOVIMENTAÇÕES RECENTES -->
+                <div class="card margin-top">
+                    <h3>Movimentações Recentes</h3>
+                    <div class="table-responsive margin-top-sm">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Data / Hora</th>
+                                    <th>Tipo</th>
+                                    <th>Produto</th>
+                                    <th>Qtd.</th>
+                                    <th>Usuário Responsável</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-recent-history-body">
+                                <!-- Preenchido dinamicamente via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SEÇÃO 1: CONSULTA / CADASTRO DE PRODUTOS -->
+            <section id="section-products" class="tab-content hidden">
+                <div class="section-header">
+                    <h2>Gestão e Consulta de Produtos</h2>
+                    <button id="btn-open-product-modal" class="btn btn-primary admin-only">+ Cadastrar Produto</button>
+                </div>
+
+                <div class="card">
+                    <!-- PAINEL DE FILTROS, PESQUISA E ORDENAÇÃO -->
+                    <div class="filters-bar">
+                        <div class="filter-group flex-grow">
+                            <label for="search-product">Pesquisar por Nome ou Código</label>
+                            <input type="text" id="search-product" placeholder="Digite o nome ou código..." class="form-input">
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="filter-category">Categoria</label>
+                            <select id="filter-category" class="form-input">
+                                <option value="">Todas as Categorias</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="filter-status">Situação do Estoque</label>
+                            <select id="filter-status" class="form-input">
+                                <option value="">Todas as Situações</option>
+                                <option value="NORMAL">Normal</option>
+                                <option value="LOW">Estoque Baixo</option>
+                                <option value="ZERO">Sem Estoque</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="sort-products">Ordenar Por</label>
+                            <select id="sort-products" class="form-input">
+                                <option value="name-asc">Nome (A-Z)</option>
+                                <option value="name-desc">Nome (Z-A)</option>
+                                <option value="code-asc">Código (Crescente)</option>
+                                <option value="stock-asc">Estoque (Menor primeiro)</option>
+                                <option value="stock-desc">Estoque (Maior primeiro)</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group filter-actions">
+                            <label>&nbsp;</label>
+                            <button id="btn-clear-filters" class="btn btn-secondary">Limpar Filtros</button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive margin-top-sm">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Nome do Produto</th>
+                                    <th>Categoria</th>
+                                    <th>Unidade</th>
+                                    <th>Situação / Estoque</th>
+                                    <th>Localização</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-products-body">
+                                <!-- Preenchido dinamicamente via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SEÇÃO 2: ESTOQUE (CONSULTA E REGISTRO) -->
+            <section id="section-stock" class="tab-content hidden">
+                <div class="section-header">
+                    <h2>Consulta e Controle de Estoque</h2>
+                    <div class="action-buttons admin-only">
+                        <button id="btn-open-entry-modal" class="btn btn-success">+ Registrar Entrada</button>
+                        <button id="btn-open-exit-modal" class="btn btn-danger">- Registrar Saída</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Produto</th>
+                                    <th>Qtd. Disponível</th>
+                                    <th>Estoque Mínimo</th>
+                                    <th>Situação / Alerta</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-stock-body">
+                                <!-- Preenchido dinamicamente via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SEÇÃO 3: HISTÓRICO DE MOVIMENTAÇÕES -->
+            <section id="section-history" class="tab-content hidden">
+                <div class="section-header">
+                    <h2>Histórico de Movimentações</h2>
+                </div>
+
+                <div class="card">
+                    <!-- FILTROS DO HISTÓRICO -->
+                    <div class="filters-bar">
+                        <div class="filter-group flex-grow">
+                            <label for="search-history">Pesquisar Produto ou Usuário</label>
+                            <input type="text" id="search-history" placeholder="Digite o nome do produto ou usuário..." class="form-input">
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="filter-history-type">Tipo de Movimentação</label>
+                            <select id="filter-history-type" class="form-input">
+                                <option value="">Todas (Entradas e Saídas)</option>
+                                <option value="ENTRADA">Apenas Entradas</option>
+                                <option value="SAÍDA">Apenas Saídas</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="filter-history-date-from">Data Inicial</label>
+                            <input type="date" id="filter-history-date-from" class="form-input">
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="filter-history-date-to">Data Final</label>
+                            <input type="date" id="filter-history-date-to" class="form-input">
+                        </div>
+
+                        <div class="filter-group filter-actions">
+                            <label>&nbsp;</label>
+                            <button id="btn-clear-history-filters" class="btn btn-secondary">Limpar Filtros</button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive margin-top-sm">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Data / Hora</th>
+                                    <th>Tipo</th>
+                                    <th>Produto</th>
+                                    <th>Quantidade</th>
+                                    <th>Usuário Responsável</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-history-body">
+                                <!-- Preenchido dinamicamente via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- MODAL DE CADASTRO / EDIÇÃO DE PRODUTO -->
+    <div id="product-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="product-modal-title">Cadastrar Novo Produto</h3>
+                <button class="modal-close-btn" id="btn-close-product-modal">&times;</button>
+            </div>
+            
+            <form id="product-form">
+                <input type="hidden" id="prod-edit-index" value="-1">
+                <div id="product-form-error" class="error-message hidden"></div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="prod-code">Código do Produto *</label>
+                        <input type="text" id="prod-code" required placeholder="Ex: PRD005">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="prod-name">Nome do Produto *</label>
+                        <input type="text" id="prod-name" required placeholder="Ex: Grampeador de Mesa">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="prod-category">Categoria *</label>
+                        <input type="text" id="prod-category" required placeholder="Ex: Escritório">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="prod-unit">Unidade de Medida *</label>
+                        <select id="prod-unit" required class="form-input">
+                            <option value="">Selecione...</option>
+                            <option value="Unidade">Unidade</option>
+                            <option value="Pacote">Pacote</option>
+                            <option value="Caixa">Caixa</option>
+                            <option value="Frasco">Frasco</option>
+                            <option value="Rolo">Rolo</option>
+                            <option value="Kg">Kg</option>
+                            <option value="Litro">Litro</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="group-prod-stock">
+                        <label for="prod-stock">Quantidade Inicial *</label>
+                        <input type="number" id="prod-stock" min="0" value="0" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="prod-min-stock">Estoque Mínimo *</label>
+                        <input type="number" id="prod-min-stock" min="0" value="5" required>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="prod-location">Localização no Almoxarifado *</label>
+                        <input type="text" id="prod-location" required placeholder="Ex: Prateleira A-02, Corredor 3">
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="prod-description">Descrição do Produto</label>
+                        <textarea id="prod-description" rows="3" placeholder="Informações detalhadas sobre o item..."></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-product-modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Produto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE VISUALIZAÇÃO DE PRODUTO -->
+    <div id="view-product-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Detalhes do Produto</h3>
+                <button class="modal-close-btn" id="btn-close-view-product">&times;</button>
+            </div>
+            <div class="view-details-grid">
+                <p><strong>Código:</strong> <span id="view-prod-code">-</span></p>
+                <p><strong>Nome:</strong> <span id="view-prod-name">-</span></p>
+                <p><strong>Categoria:</strong> <span id="view-prod-category">-</span></p>
+                <p><strong>Unidade:</strong> <span id="view-prod-unit">-</span></p>
+                <p><strong>Estoque Atual:</strong> <span id="view-prod-stock">-</span></p>
+                <p><strong>Estoque Mínimo:</strong> <span id="view-prod-min-stock">-</span></p>
+                <p><strong>Situação do Estoque:</strong> <span id="view-prod-status">-</span></p>
+                <p><strong>Localização:</strong> <span id="view-prod-location">-</span></p>
+                <p class="full-width"><strong>Descrição:</strong> <span id="view-prod-description">-</span></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btn-cancel-view-product">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONFIRMAÇÃO DE EXCLUSÃO -->
+    <div id="confirm-modal" class="modal-overlay hidden">
+        <div class="modal-card modal-card-sm">
+            <div class="modal-header">
+                <h3>Confirmar Exclusão</h3>
+                <button class="modal-close-btn" id="btn-close-confirm-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir o produto <strong id="confirm-item-name"></strong>?</p>
+                <p class="text-muted margin-top-sm">Esta ação não poderá ser desfeita.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btn-cancel-confirm">Cancelar</button>
+                <button class="btn btn-danger" id="btn-accept-confirm">Excluir Produto</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL REGISTRAR ENTRADA DE ESTOQUE -->
+    <div id="entry-modal" class="modal-overlay hidden">
+        <div class="modal-card modal-card-sm">
+            <div class="modal-header">
+                <h3>Registrar Entrada de Estoque</h3>
+                <button class="modal-close-btn" id="btn-close-entry-modal">&times;</button>
+            </div>
+            
+            <form id="entry-form">
+                <div id="entry-form-error" class="error-message hidden"></div>
+                <div id="entry-form-success" class="success-message hidden"></div>
+
+                <div class="form-group">
+                    <label for="entry-product-select">Selecione o Produto *</label>
+                    <select id="entry-product-select" class="form-input" required>
+                        <option value="">Carregando produtos...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="entry-qty">Quantidade de Entrada *</label>
+                    <input type="number" id="entry-qty" min="1" value="1" required placeholder="Ex: 10">
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-entry">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Confirmar Entrada</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL REGISTRAR SAÍDA DE ESTOQUE -->
+    <div id="exit-modal" class="modal-overlay hidden">
+        <div class="modal-card modal-card-sm">
+            <div class="modal-header">
+                <h3>Registrar Saída de Estoque</h3>
+                <button class="modal-close-btn" id="btn-close-exit-modal">&times;</button>
+            </div>
+            
+            <form id="exit-form">
+                <div id="exit-form-error" class="error-message hidden"></div>
+                <div id="exit-form-success" class="success-message hidden"></div>
+
+                <div class="form-group">
+                    <label for="exit-product-select">Selecione o Produto *</label>
+                    <select id="exit-product-select" class="form-input" required>
+                        <option value="">Carregando produtos...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="exit-qty">Quantidade de Saída *</label>
+                    <input type="number" id="exit-qty" min="1" value="1" required placeholder="Ex: 5">
+                    <small id="exit-stock-available" class="text-muted block-sm">Estoque disponível: -</small>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-exit">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Confirmar Saída</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
